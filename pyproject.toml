@@ -1,0 +1,49 @@
+[project]
+name = "aiwolf-nlp-agent"
+version = "0.3.6"
+dependencies = [
+    "aiwolf-nlp-common==0.6.10",
+    "python-ulid>=3.0.0",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.4",
+]
+requires-python = ">=3.11"
+authors = [
+    { name = "aiwolfdial", email = "aiwolf@kanolab.net" },
+    { name = "nwatanabe", email = "nwatanabe@kanolab.net" },
+    { name = "ysahashi", email = "ysahashi@kanolab.net" },
+]
+maintainers = [
+    { name = "aiwolfdial", email = "aiwolf@kanolab.net" },
+    { name = "nwatanabe", email = "nwatanabe@kanolab.net" },
+    { name = "ysahashi", email = "ysahashi@kanolab.net" },
+]
+description = "aiwolf-nlp-agent"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["aiwolf"]
+
+[project.urls]
+Homepage = "https://aiwolfdial.github.io/aiwolf-nlp/"
+
+[dependency-groups]
+dev = ["pyright>=1.1.402", "ruff>=0.12.1"]
+lint = ["ruff>=0.12.1"]
+
+[tool.pyright]
+include = ["src"]
+exclude = ["**/__pycache__"]
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+typeCheckingMode = "strict"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+unfixable = ["F401", "F841"]
+pydocstyle.convention = "google"
