@@ -3,6 +3,9 @@
 設定に応じたエージェントを起動するスクリプト.
 """
 
+import warnings
+warnings.simplefilter("always")
+
 import argparse
 import logging
 import multiprocessing

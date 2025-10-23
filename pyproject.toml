@@ -1,10 +1,15 @@
 [project]
-name = "aiwolf-nlp-agent"
+name = "aiwolf-nlp-agent-llm"
 version = "0.3.6"
 dependencies = [
     "aiwolf-nlp-common==0.6.10",
     "python-ulid>=3.0.0",
     "pyyaml>=6.0.2",
+    "jinja2>=3.1.6",
+    "langchain-google-genai>=2.1.0",
+    "langchain-openai>=0.3.9",
+    "langchain-ollama>=0.3.0",
+    "python-dotenv>=1.1.0",
     "requests>=2.32.4",
 ]
 requires-python = ">=3.11"
@@ -18,7 +23,7 @@ maintainers = [
     { name = "nwatanabe", email = "nwatanabe@kanolab.net" },
     { name = "ysahashi", email = "ysahashi@kanolab.net" },
 ]
-description = "aiwolf-nlp-agent"
+description = "aiwolf-nlp-agent-llm"
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = ["aiwolf"]

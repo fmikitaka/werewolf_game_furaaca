@@ -137,7 +137,7 @@ prompt:
     {%- endfor %}
 
 log:
-  console_output: false
+  console_output: true
   file_output: true
   output_dir: ./log
   level: debug
