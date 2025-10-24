@@ -17,7 +17,7 @@ openai:
   temperature: 0.7
 
 google:
-  model: gemini-2.0-flash-lite
+  model: gemini-2.5-flash-lite
   temperature: 0.7
 
 ollama:
@@ -27,109 +27,109 @@ ollama:
 
 prompt:
   initialize: |-
-    ã‚ãªãŸã¯äººç‹¼ã‚²ãƒ¼ãƒ ã®ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆã§ã™ã€‚
-    ã‚ãªãŸã®åå‰ã¯{{ info.agent }}ã§ã™ã€‚
-    ã‚ãªãŸã®å½¹è·ã¯{{ role.value }}ã§ã™ã€‚
+    ‚ ‚È‚½‚Íl˜TƒQ[ƒ€‚ÌƒG[ƒWƒFƒ“ƒg‚Å‚·B
+    ‚ ‚È‚½‚Ì–¼‘O‚Í{{ info.agent }}‚Å‚·B
+    ‚ ‚È‚½‚Ì–ğE‚Í{{ role.value }}‚Å‚·B
 
-    ã“ã‚Œã‹ã‚‰ã‚²ãƒ¼ãƒ ã‚’é€²è¡Œã—ã¦ã„ãã¾ã™ã€‚ãƒªã‚¯ã‚¨ã‚¹ãƒˆãŒæ¥ãŸéš›ã«ã¯ã€æ—¥æœ¬èªã§é©åˆ‡ãªå¿œç­”ã‚’è¿”ã—ã¦ãã ã•ã„ã€‚
+    ‚±‚ê‚©‚çƒQ[ƒ€‚ğis‚µ‚Ä‚¢‚«‚Ü‚·BƒŠƒNƒGƒXƒg‚ª—ˆ‚½Û‚É‚ÍA“ú–{Œê‚Å“KØ‚È‰“š‚ğ•Ô‚µ‚Ä‚­‚¾‚³‚¢B
 
-    ãƒˆãƒ¼ã‚¯ãƒªã‚¯ã‚¨ã‚¹ãƒˆã¨å›ããƒªã‚¯ã‚¨ã‚¹ãƒˆã«å¯¾ã—ã¦ã¯ã€ã‚²ãƒ¼ãƒ å†…ã§ç™ºè¨€ã™ã‚‹ã¹ãå†…å®¹ã®ã¿ã‚’å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚
-    å±¥æ­´ãŒã‚ã‚‹å ´åˆã¯ã€ãã‚Œã‚’å‚è€ƒã«ã—ã¦ãã ã•ã„ã€‚ãªã„å ´åˆã¯ã€é©åˆ‡ãªå†…å®¹ã‚’å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚
-    ã“ã‚Œä»¥ä¸Šã®æƒ…å ±ã‚’å¾—ã‚‰ã‚Œãªã„ã¨è€ƒãˆãŸã¨ããªã©ãƒˆãƒ¼ã‚¯ã‚’çµ‚äº†ã—ãŸã„å ´åˆã«ã¤ã„ã¦ã¯ã€ŒOverã€ã¨å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚
+    ƒg[ƒNƒŠƒNƒGƒXƒg‚Æš‘‚«ƒŠƒNƒGƒXƒg‚É‘Î‚µ‚Ä‚ÍAƒQ[ƒ€“à‚Å”­Œ¾‚·‚é‚×‚«“à—e‚Ì‚İ‚ğo—Í‚µ‚Ä‚­‚¾‚³‚¢B
+    —š—ğ‚ª‚ ‚éê‡‚ÍA‚»‚ê‚ğQl‚É‚µ‚Ä‚­‚¾‚³‚¢B‚È‚¢ê‡‚ÍA“KØ‚È“à—e‚ğo—Í‚µ‚Ä‚­‚¾‚³‚¢B
+    ‚±‚êˆÈã‚Ìî•ñ‚ğ“¾‚ç‚ê‚È‚¢‚Æl‚¦‚½‚Æ‚«‚È‚Çƒg[ƒN‚ğI—¹‚µ‚½‚¢ê‡‚É‚Â‚¢‚Ä‚ÍuOverv‚Æo—Í‚µ‚Ä‚­‚¾‚³‚¢B
 
-    ä»–ã®ãƒªã‚¯ã‚¨ã‚¹ãƒˆã«å¯¾ã—ã¦ã¯ã€è¡Œå‹•ã®å¯¾è±¡ã¨ãªã‚‹ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆã®åå‰ã®ã¿ã‚’å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚
-    å¯¾è±¡ã¨ãªã‚‹ç”Ÿå­˜ã—ã¦ã„ã‚‹ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆã®ä¸€è¦§ãŒä»˜ä¸ã•ã‚Œã¦ã„ã¾ã™ã€‚
+    ‘¼‚ÌƒŠƒNƒGƒXƒg‚É‘Î‚µ‚Ä‚ÍAs“®‚Ì‘ÎÛ‚Æ‚È‚éƒG[ƒWƒFƒ“ƒg‚Ì–¼‘O‚Ì‚İ‚ğo—Í‚µ‚Ä‚­‚¾‚³‚¢B
+    ‘ÎÛ‚Æ‚È‚é¶‘¶‚µ‚Ä‚¢‚éƒG[ƒWƒFƒ“ƒg‚Ìˆê——‚ª•t—^‚³‚ê‚Ä‚¢‚Ü‚·B
 
     {% if info.profile is not none -%}
-    ã‚ãªãŸã®ãƒ—ãƒ­ãƒ•ã‚£ãƒ¼ãƒ«: {{ info.profile }}
+    ‚ ‚È‚½‚ÌƒvƒƒtƒB[ƒ‹: {{ info.profile }}
     {%- endif %}
 
-    ã‚ãªãŸã®ãƒ¬ã‚¹ãƒãƒ³ã‚¹ã¯ãã®ã¾ã¾ã‚²ãƒ¼ãƒ å†…ã«é€ä¿¡ã•ã‚Œã‚‹ãŸã‚ã€ä¸è¦ãªæƒ…å ±ã‚’å«ã‚ãªã„ã§ãã ã•ã„ã€‚
+    ‚ ‚È‚½‚ÌƒŒƒXƒ|ƒ“ƒX‚Í‚»‚Ì‚Ü‚ÜƒQ[ƒ€“à‚É‘—M‚³‚ê‚é‚½‚ßA•s—v‚Èî•ñ‚ğŠÜ‚ß‚È‚¢‚Å‚­‚¾‚³‚¢B
   daily_initialize: |-
-    æ˜¼é–‹å§‹ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    {{ info.day }}æ—¥ç›®
+    ’‹ŠJnƒŠƒNƒGƒXƒg
+    {{ info.day }}“ú–Ú
     {% if info.medium_result is not none -%}
-    éœŠèƒ½çµæœ: {{ info.medium_result }}
+    —ì”\Œ‹‰Ê: {{ info.medium_result }}
     {%- endif %}
     {% if info.divine_result is not none -%}
-    å ã„çµæœ: {{ info.divine_result }}
+    è‚¢Œ‹‰Ê: {{ info.divine_result }}
     {%- endif %}
     {% if info.executed_agent is not none -%}
-    è¿½æ”¾çµæœ: {{ info.executed_agent }}
+    ’Ç•úŒ‹‰Ê: {{ info.executed_agent }}
     {%- endif %}
     {% if info.attacked_agent is not none -%}
-    è¥²æ’ƒçµæœ: {{ info.attacked_agent }}
+    PŒ‚Œ‹‰Ê: {{ info.attacked_agent }}
     {%- endif %}
     {% if info.vote_list is not none -%}
-    æŠ•ç¥¨çµæœ: {{ info.vote_list }}
+    “Š•[Œ‹‰Ê: {{ info.vote_list }}
     {%- endif %}
     {% if info.attack_vote_list is not none -%}
-    è¥²æ’ƒæŠ•ç¥¨çµæœ: {{ info.attack_vote_list }}
+    PŒ‚“Š•[Œ‹‰Ê: {{ info.attack_vote_list }}
     {%- endif %}
   whisper: |-
-    å›ããƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å±¥æ­´:
+    š‘‚«ƒŠƒNƒGƒXƒg
+    —š—ğ:
     {% for w in whisper_history[sent_whisper_count:] -%}
     {{ w.agent }}: {{ w.text }}
     {% endfor %}
   talk: |-
-    ãƒˆãƒ¼ã‚¯ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å±¥æ­´:
+    ƒg[ƒNƒŠƒNƒGƒXƒg
+    —š—ğ:
     {% for w in talk_history[sent_talk_count:] -%}
     {{ w.agent }}: {{ w.text }}
     {% endfor %}
   daily_finish: |-
-    æ˜¼çµ‚äº†ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å±¥æ­´:
+    ’‹I—¹ƒŠƒNƒGƒXƒg
+    —š—ğ:
     {% for w in talk_history[sent_talk_count:] -%}
     {{ w.agent }}: {{ w.text }}
     {% endfor %}
-    {{ info.day }}æ—¥ç›®
+    {{ info.day }}“ú–Ú
     {% if info.medium_result is not none -%}
-    éœŠèƒ½çµæœ: {{ info.medium_result }}
+    —ì”\Œ‹‰Ê: {{ info.medium_result }}
     {%- endif %}
     {% if info.divine_result is not none -%}
-    å ã„çµæœ: {{ info.divine_result }}
+    è‚¢Œ‹‰Ê: {{ info.divine_result }}
     {%- endif %}
     {% if info.executed_agent is not none -%}
-    è¿½æ”¾çµæœ: {{ info.executed_agent }}
+    ’Ç•úŒ‹‰Ê: {{ info.executed_agent }}
     {%- endif %}
     {% if info.attacked_agent is not none -%}
-    è¥²æ’ƒçµæœ: {{ info.attacked_agent }}
+    PŒ‚Œ‹‰Ê: {{ info.attacked_agent }}
     {%- endif %}
     {% if info.vote_list is not none -%}
-    æŠ•ç¥¨çµæœ: {{ info.vote_list }}
+    “Š•[Œ‹‰Ê: {{ info.vote_list }}
     {%- endif %}
     {% if info.attack_vote_list is not none -%}
-    è¥²æ’ƒæŠ•ç¥¨çµæœ: {{ info.attack_vote_list }}
+    PŒ‚“Š•[Œ‹‰Ê: {{ info.attack_vote_list }}
     {%- endif %}
   divine: |-
-    å ã„ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å¯¾è±¡:
+    è‚¢ƒŠƒNƒGƒXƒg
+    ‘ÎÛ:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
     {{ k }}
     {% endif -%}
     {%- endfor %}
   guard: |-
-    è­·è¡›ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å¯¾è±¡:
+    Œì‰qƒŠƒNƒGƒXƒg
+    ‘ÎÛ:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
     {{ k }}
     {% endif -%}
     {%- endfor %}
   vote: |-
-    æŠ•ç¥¨ãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å¯¾è±¡:
+    “Š•[ƒŠƒNƒGƒXƒg
+    ‘ÎÛ:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
     {{ k }}
     {% endif -%}
     {%- endfor %}
   attack: |-
-    è¥²æ’ƒãƒªã‚¯ã‚¨ã‚¹ãƒˆ
-    å¯¾è±¡:
+    PŒ‚ƒŠƒNƒGƒXƒg
+    ‘ÎÛ:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
     {{ k }}
