@@ -32,7 +32,7 @@ def execute(config_path: Path) -> None:
     Args:
         config_path (Path): Path to the configuration file / 設定ファイルのパス
     """
-    with Path.open(config_path) as f:
+    with Path.open(config_path, encoding="utf-8") as f:
         config = yaml.safe_load(f)
         logger.info("設定ファイルを読み込みました")
 
