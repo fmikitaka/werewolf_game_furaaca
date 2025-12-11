@@ -9,7 +9,7 @@ agent:
   kill_on_timeout: true
 
 llm:
-  type: google
+  type: openai
   sleep_time: 3
 
 openai:
@@ -24,6 +24,18 @@ ollama:
   model: llama3.1
   temperature: 0.7
   base_url: http://localhost:11434
+
+contradiction_check:
+  enabled: true
+  target_requests:
+    - talk
+    - whisper
+  history_limit: 10
+  apply_revision: true
+  fail_on_unresolved: false
+  allow_role_bluff_roles:
+    - WEREWOLF
+    - POSSESSED
 
 prompt:
   initialize: |-
@@ -43,6 +55,41 @@ prompt:
     {% if info.profile is not none -%}
     あなたのプロフィール: {{ info.profile }}
     {%- endif %}
+    役職の説明は以下の通りです。
+      🟦 市民（2人） — 市民陣営
+
+      なんの能力も持たない普通の人。
+      しかし、能力を持たないからこそ、人狼に噛まれる心配が比較的少なく、
+      自分の推理を恐れず述べることができる。
+      この村では市民の数が限られているため、
+      自ら市民だと名乗ることは潜伏枠を狭め、役職者の妨げになる場合がある。
+      基本的には占い師の盾となりつつ、会話での情報整理と判断が重要となる。
+
+      🔮 占い師（1人） — 市民陣営の要
+
+      毎夜一人を占い、その人物が「人狼」か「人狼でない」かを知ることができる。
+      この村では人数が少ないため、一つの占い結果が村の命運を左右する。
+      自身が早期に噛まれやすい役割であるため、
+      いつ名乗り出るか・どう結果を落とすかの判断が非常に重要となる。
+      市民側に確実な情報を残すことで勝利が近づく。
+
+      🟥 狂人（1人） — 人狼陣営の協力者
+
+      人狼に味方する危険な人間。
+      しかし、自分からは誰が人狼なのか分からない。
+      人狼勝利が自らの勝利となるため、
+      占い師を騙ったり、村を混乱させるような推理を意図的に行うなど、
+      市民陣営を誤った方向へ導く行動をとる。
+      人数が少ない村では、ひとつのミスリードが勝敗を大きく揺らす。
+
+      🐺 人狼（1人） — 人狼陣営の核
+
+      夜の行動で指定した人物を襲撃できる唯一の存在。
+      人数が少ないため、昼の会話では特に慎重に立ち回る必要がある。
+      自らの正体を隠し、市民や占い師に成りすまして村を混乱させよう。
+      市民の数を人狼と同じかそれ以下にすれば勝利となる。
+      狂人とはお互い正体が分からないが、狂人のミスリードをうまく利用することで勝利が近づく。
+
 
     あなたのレスポンスはそのままゲーム内に送信されるため、不要な情報を含めないでください。
   daily_initialize: |-
@@ -116,6 +163,7 @@ prompt:
     {%- endif %}
   divine: |-
     占いリクエスト
+    以下の生存者から1人を選び、占いたいエージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -124,6 +172,7 @@ prompt:
     {%- endfor %}
   guard: |-
     護衛リクエスト
+    以下の生存者から1人を選び、護衛したいエージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -132,6 +181,7 @@ prompt:
     {%- endfor %}
   vote: |-
     投票リクエスト
+    以下の生存者から1人を選び、投票するエージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -140,6 +190,7 @@ prompt:
     {%- endfor %}
   attack: |-
     襲撃リクエスト
+    以下の生存者から1人を選び、襲撃したいエージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -150,8 +201,11 @@ prompt:
 log:
   console_output: false
   file_output: true
+  conversation_output: true
+  conversation_all_output: true
+  conversation_all_filename: conversation_all.txt
   output_dir: ./log
-  level: debug
+  level: INFO
 
   request:
     name: false
@@ -162,6 +216,148 @@ log:
     daily_finish: false
     divine: true
     guard: true
-    vote: true
-    attack: true
-    finish: false
+  vote: true
+  attack: true
+  finish: false
+
+module_prompt:
+  initialize: |-
+    あなたは人狼ゲームのエージェントです。
+    あなたの名前は {{ info.agent }} です。
+    あなたの役職は {{ role.value }} です。
+
+    これから人狼ゲームを開始します。
+    まず簡単な自己紹介と初日の方針を述べてください。
+
+    出力形式：
+    ```json
+    {
+      "self_introduction": "",
+      "opening_policy": "",
+      "message_to_others": ""
+    }
+    ```
+  daily_initialize: |-
+    あなたは {{ info.agent }}、役職 {{ role.value }} です。
+
+    {{ info.day }} 日目が始まりました。
+    生存プレイヤー: {{ info.alive_agents }}
+    直前の出来事:
+    {{ info.latest_events }}
+
+    今日の行動を考える準備として、状況を整理してください。
+
+    出力形式：
+    ```json
+    {
+      "situation_summary": "",
+      "today_objective": "",
+      "notes_for_myself": ""
+    }
+    ```
+  analyze: |-
+    === ゲーム情報 ===
+    日数: {{ info.day }}
+    生存: {{ info.alive_agents }}
+    イベント:
+    {{ info.structured_events }}
+
+    === 発言（要約） ===
+    {{ info.talk_summaries }}
+
+    以下を JSON で出力：
+
+    ```json
+    {
+      "suspicion_scores": {},
+      "trust_scores": {},
+      "player_explanations": {},
+      "today_main_lynch_target": {
+        "agent": "",
+        "reason": ""
+      },
+      "today_never_lynch_candidates": []
+    }
+    ```
+  decide_strategy: |-
+    以下は直前の analysis 結果です：
+    {{ info.last_analysis_json }}
+
+    今日1日の戦略を JSON で出力してください：
+
+    ```json
+    {
+      "talk_style": "",
+      "main_attack_target": {
+        "agent": "",
+        "reason": ""
+      },
+      "sub_attack_targets": [],
+      "protect_targets": [],
+      "vote_plan": {
+        "primary": "",
+        "backup": ""
+      },
+      "today_talking_points": []
+    }
+    ```
+  talk_from_strategy: |-
+    戦略：
+    {{ info.today_strategy_json }}
+
+    この戦略に従い、1ターン分の発言だけ生成してください。
+    日本語の文章のみ出力。1～2行が望ましい。
+  vote: |-
+    戦略：
+    {{ info.today_strategy_json }}
+
+    今日の投票先を次の JSON 形式で返してください：
+
+    ```json
+    {
+      "vote_target": "",
+      "reason": ""
+    }
+    ```
+  contradiction_check: |-
+    あなたは人狼ゲームエージェントの矛盾検査官です。
+    以下の情報を用いて、今回の発話案が過去の発言や役職・状況と矛盾していないか確認してください。
+
+    - エージェント名: {{ agent_name }}
+    - 役職: {{ role.value if role else "" }}
+    - 対象リクエスト: {{ request }}
+    - 現在の日数: {{ info.day if info else "不明" }}
+
+    {% if allow_role_bluff %}
+    注意: この役職はゲーム上のブラフ（例: 自分を市民と偽る発言）を許容されています。実際の役職と異なる自己申告だけでは矛盾とみなさないでください。
+    {% endif %}
+
+    --- 自分の過去の発言（最新{{ agent_history|length }}件） ---
+    {% if agent_history %}
+    {% for item in agent_history %}
+    * {{ item.agent }}: {{ item.text }}
+    {% endfor %}
+    {% else %}
+    * 過去発言なし
+    {% endif %}
+
+    --- 会話全体の抜粋（最新{{ recent_talks|length }}件） ---
+    {% if recent_talks %}
+    {% for item in recent_talks %}
+    * {{ item.agent }}: {{ item.text }}
+    {% endfor %}
+    {% else %}
+    * 履歴なし
+    {% endif %}
+
+    --- 新しい発言案 ---
+    {{ candidate_response }}
+
+    JSON形式で結果を出力してください。
+    ```json
+    {
+      "is_contradiction": false,
+      "explanation": "",
+      "revised_response": ""
+    }
+    ```

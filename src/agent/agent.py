@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 import random
+import re
 from pathlib import Path
 from time import sleep
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
@@ -18,7 +20,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
-from pydantic import SecretStr
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
@@ -74,7 +75,164 @@ class Agent:
         self.llm_model: BaseChatModel | None = None
         self.llm_message_history: list[BaseMessage] = []
 
-        load_dotenv(Path(__file__).parent.joinpath("./../../config/.env"))
+        load_dotenv(Path(__file__).resolve().parents[2] / "config" / ".env", override=False)
+
+    @staticmethod
+    def _require_env_var(var_name: str) -> str:
+        """Fetch an environment variable following provider recommendations."""
+        value = os.getenv(var_name)
+        if not value:
+            msg = (
+                f"{var_name} is not set. Set the provider API key as an environment variable "
+                "before launching the agent (see the OpenAI / Google credential docs)."
+            )
+            raise RuntimeError(msg)
+        return value
+
+    @staticmethod
+    def _normalize_request_name(request: Request | None) -> str | None:
+        """Normalize request enum/object into lowercase string."""
+        if request is None:
+            return None
+        if hasattr(request, "lower"):
+            return request.lower()
+        return str(request).lower()
+
+    def _serialize_talks(self, history: list[Talk], limit: int, only_self: bool = False) -> list[dict[str, str]]:
+        """Serialize talk history for prompt templates."""
+        if limit <= 0:
+            limit = len(history)
+        serialized: list[dict[str, str]] = []
+        for talk in history:
+            agent_name = getattr(talk, "agent", "")
+            if only_self and agent_name != self.agent_name:
+                continue
+            serialized.append(
+                {
+                    "agent": agent_name,
+                    "text": getattr(talk, "text", ""),
+                },
+            )
+        return serialized[-limit:]
+
+    def _should_run_contradiction_check(self, request: Request | None) -> bool:
+        """Determine whether contradiction check should run for the request."""
+        config = self.config.get("contradiction_check", {})
+        if not bool(config.get("enabled", False)):
+            return False
+        req_name = self._normalize_request_name(request)
+        if req_name is None:
+            return False
+        targets = config.get("target_requests", [])
+        normalized_targets = {str(target).lower() for target in targets}
+        return req_name in normalized_targets
+
+    @staticmethod
+    def _parse_contradiction_output(raw_output: str) -> dict[str, Any]:
+        """Extract JSON payload from contradiction checker output."""
+        text = raw_output.strip()
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        payload = match.group(0) if match else text
+        try:
+            data: dict[str, Any] = json.loads(payload)
+        except json.JSONDecodeError:
+            data = {"is_contradiction": False, "explanation": "failed_to_parse"}
+        data.setdefault("explanation", "")
+        data.setdefault("is_contradiction", False)
+        data.setdefault("revised_response", "")
+        data["raw_output"] = raw_output
+        return data
+
+    def _run_contradiction_check(self, request: Request | None, candidate_response: str) -> dict[str, Any] | None:
+        """Invoke contradiction check prompt and return parsed result."""
+        if self.llm_model is None:
+            return None
+        template_str = (
+            self.config.get("module_prompt", {})
+            or {}
+        ).get("contradiction_check")
+        if not template_str:
+            return None
+        check_config = self.config.get("contradiction_check", {})
+        history_limit = int(check_config.get("history_limit", 10))
+        allow_role_bluff = False
+        if self.role:
+            role_value = str(getattr(self.role, "value", self.role))
+            allowed_roles = {
+                str(role_name).upper()
+                for role_name in check_config.get("allow_role_bluff_roles", [])
+            }
+            allow_role_bluff = role_value.upper() in allowed_roles
+        template = Template(template_str)
+        rendered_prompt = template.render(
+            agent_name=self.agent_name,
+            role=self.role,
+            info=self.info,
+            request=self._normalize_request_name(request),
+            agent_history=self._serialize_talks(self.talk_history, history_limit, only_self=True),
+            recent_talks=self._serialize_talks(self.talk_history, history_limit),
+            candidate_response=candidate_response,
+            allow_role_bluff=allow_role_bluff,
+        ).strip()
+        try:
+            raw_output = (self.llm_model | StrOutputParser()).invoke([HumanMessage(content=rendered_prompt)])
+        except Exception:
+            self.agent_logger.logger.exception("Failed to run contradiction check")
+            return None
+        return self._parse_contradiction_output(raw_output)
+
+    def _postprocess_response(self, request: Request | None, prompt: str, response: str) -> str:
+        """Apply optional post-processing such as normalization and contradiction checks."""
+        normalized_request = self._normalize_request_name(request)
+        response = response.strip()
+        response = self._normalize_action_response(normalized_request, response)
+        if not self._should_run_contradiction_check(request):
+            return response
+        result = self._run_contradiction_check(request, response)
+        if not result:
+            return response
+        if result.get("is_contradiction"):
+            explanation = result.get("explanation", "")
+            self.agent_logger.logger.warning(
+                "LLM response contradicted history: %s",
+                explanation,
+            )
+            revised = result.get("revised_response") or result.get("suggested_response") or ""
+            if revised and bool(self.config.get("contradiction_check", {}).get("apply_revision", False)):
+                self.agent_logger.logger.info(
+                    ["LLM_CONTRADICTION_REVISION", prompt, revised],
+                )
+                return str(revised).strip()
+            if bool(self.config.get("contradiction_check", {}).get("fail_on_unresolved", False)):
+                raise ValueError("Contradiction detected but no revision available")
+        else:
+            self.agent_logger.logger.debug(
+                "Contradiction check passed for request: %s",
+                request,
+            )
+        return response
+
+    def _normalize_action_response(self, request_name: str | None, response: str) -> str:
+        """Ensure action responses contain only agent names when required."""
+        if request_name not in {"divine", "guard", "vote", "attack"}:
+            return response
+        alive_agents = self.get_alive_agents()
+        if not alive_agents:
+            return response
+        candidate = response.strip()
+        if not candidate:
+            return candidate
+        for agent in alive_agents:
+            if candidate == agent:
+                return agent
+        for agent in alive_agents:
+            if agent in candidate:
+                return agent
+        tokens = re.split(r"[\\s,:：、，。]+", candidate)
+        for token in tokens:
+            if token in alive_agents:
+                return token
+        return candidate
 
     @staticmethod
     def timeout(func: Callable[P, T]) -> Callable[P, T]:
@@ -196,8 +354,10 @@ class Agent:
         try:
             self.llm_message_history.append(HumanMessage(content=prompt))
             response = (self.llm_model | StrOutputParser()).invoke(self.llm_message_history)
+            response = self._postprocess_response(request, prompt, response)
             self.llm_message_history.append(AIMessage(content=response))
             self.agent_logger.logger.info(["LLM", prompt, response])
+            self.agent_logger.conversation(self.request, prompt, response)
         except Exception:
             self.agent_logger.logger.exception("Failed to send message to LLM")
             return None
@@ -226,16 +386,16 @@ class Agent:
         model_type = str(self.config["llm"]["type"])
         match model_type:
             case "openai":
+                self._require_env_var("OPENAI_API_KEY")
                 self.llm_model = ChatOpenAI(
                     model=str(self.config["openai"]["model"]),
                     temperature=float(self.config["openai"]["temperature"]),
-                    api_key=SecretStr(os.environ["OPENAI_API_KEY"]),
                 )
             case "google":
+                self._require_env_var("GOOGLE_API_KEY")
                 self.llm_model = ChatGoogleGenerativeAI(
                     model=str(self.config["google"]["model"]),
                     temperature=float(self.config["google"]["temperature"]),
-                    api_key=SecretStr(os.environ["GOOGLE_API_KEY"]),
                 )
             case "ollama":
                 self.llm_model = ChatOllama(

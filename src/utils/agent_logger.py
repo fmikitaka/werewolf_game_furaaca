@@ -43,6 +43,9 @@ class AgentLogger:
         self.logger.setLevel(
             logging.getLevelNamesMapping()[str(self.config["log"]["level"]).upper()],
         )
+        self.output_dir: Path | None = None
+        self.conversation_log_path: Path | None = None
+        self.conversation_all_path: Path | None = None
         if bool(self.config["log"]["console_output"]):
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
@@ -53,7 +56,7 @@ class AgentLogger:
         if bool(self.config["log"]["file_output"]):
             ulid: ULID = ULID.from_str(game_id)
             tz = datetime.now(UTC).astimezone().tzinfo
-            output_dir = (
+            self.output_dir = (
                 Path(
                     str(self.config["log"]["output_dir"]),
                 )
@@ -61,12 +64,12 @@ class AgentLogger:
                     "%Y%m%d%H%M%S%f",
                 )[:-3]
             )
-            output_dir.mkdir(
+            self.output_dir.mkdir(
                 parents=True,
                 exist_ok=True,
             )
             handler = logging.FileHandler(
-                output_dir / f"{self.name}.log",
+                self.output_dir / f"{self.name}.log",
                 mode="w",
                 encoding="utf-8",
             )
@@ -75,6 +78,16 @@ class AgentLogger:
             )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+            if bool(self.config["log"].get("conversation_output", False)):
+                self.conversation_log_path = self.output_dir / f"{self.name}_conversation.txt"
+                self.conversation_log_path.write_text("", encoding="utf-8")
+            if bool(self.config["log"].get("conversation_all_output", False)):
+                filename = str(
+                    self.config["log"].get("conversation_all_filename", "conversation_all.txt"),
+                )
+                self.conversation_all_path = self.output_dir / filename
+                if not self.conversation_all_path.exists():
+                    self.conversation_all_path.write_text("", encoding="utf-8")
 
     def packet(self, req: Request | None, res: str | None) -> None:
         """Log packet information.
@@ -95,3 +108,22 @@ class AgentLogger:
             self.logger.info([str(req)])
         else:
             self.logger.info([str(req), res])
+
+    def conversation(self, req: Request | None, prompt: str, response: str) -> None:
+        """Write LLM prompt/response conversation to log files."""
+        timestamp = datetime.now(UTC).astimezone().isoformat(timespec="seconds")
+        request_name = str(req) if req else "None"
+        entry = (
+            f"[{timestamp}] {request_name} ({self.name})\n"
+            "PROMPT:\n"
+            f"{prompt}\n\n"
+            "RESPONSE:\n"
+            f"{response}\n\n"
+            "---\n"
+        )
+        if self.conversation_log_path:
+            with self.conversation_log_path.open("a", encoding="utf-8") as file:
+                file.write(entry)
+        if self.conversation_all_path:
+            with self.conversation_all_path.open("a", encoding="utf-8") as file:
+                file.write(entry)
