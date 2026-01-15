@@ -1,0 +1,156 @@
+web_socket:
+  url: ws://127.0.0.1:8080/ws
+  token:
+  auto_reconnect: false
+
+agent:
+  num: 5
+  team: kanolab
+  kill_on_timeout: true
+
+llm:
+  type: google
+  sleep_time: 3
+
+openai:
+  model: gpt-4o-mini
+  temperature: 0.7
+
+google:
+  model: gemini-2.0-flash-lite
+  temperature: 0.7
+
+ollama:
+  model: llama3.1
+  temperature: 0.7
+  base_url: http://localhost:11434
+
+prompt:
+  initialize: |-
+    あなたは人狼ゲームのエージェントです。
+    あなたの名前は{{ info.agent }}です。
+    あなたの役職は{{ role.value }}です。
+
+    これからゲームを進行していきます。リクエストが来た際には、日本語で適切な応答を返してください。
+
+    トークリクエストと囁きリクエストに対しては、ゲーム内で発言するべき内容のみを出力してください。
+    履歴がある場合は、それを参考にしてください。ない場合は、適切な内容を出力してください。
+    これ以上の情報を得られないと考えたときなどトークを終了したい場合については「Over」と出力してください。
+
+    他のリクエストに対しては、行動の対象となるエージェントの名前のみを出力してください。
+    対象となる生存しているエージェントの一覧が付与されています。
+
+    {% if info.profile is not none -%}
+    あなたのプロフィール: {{ info.profile }}
+    {%- endif %}
+
+    あなたのレスポンスはそのままゲーム内に送信されるため、不要な情報を含めないでください。
+  daily_initialize: |-
+    昼開始リクエスト
+    {{ info.day }}日目
+    {% if info.medium_result is not none -%}
+    霊能結果: {{ info.medium_result }}
+    {%- endif %}
+    {% if info.divine_result is not none -%}
+    占い結果: {{ info.divine_result }}
+    {%- endif %}
+    {% if info.executed_agent is not none -%}
+    追放結果: {{ info.executed_agent }}
+    {%- endif %}
+    {% if info.attacked_agent is not none -%}
+    襲撃結果: {{ info.attacked_agent }}
+    {%- endif %}
+    {% if info.vote_list is not none -%}
+    投票結果: {{ info.vote_list }}
+    {%- endif %}
+    {% if info.attack_vote_list is not none -%}
+    襲撃投票結果: {{ info.attack_vote_list }}
+    {%- endif %}
+  whisper: |-
+    囁きリクエスト
+    履歴:
+    {% for w in whisper_history[sent_whisper_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+  talk: |-
+    トークリクエスト
+    履歴:
+    {% for w in talk_history[sent_talk_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+  daily_finish: |-
+    昼終了リクエスト
+    履歴:
+    {% for w in talk_history[sent_talk_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+    {{ info.day }}日目
+    {% if info.medium_result is not none -%}
+    霊能結果: {{ info.medium_result }}
+    {%- endif %}
+    {% if info.divine_result is not none -%}
+    占い結果: {{ info.divine_result }}
+    {%- endif %}
+    {% if info.executed_agent is not none -%}
+    追放結果: {{ info.executed_agent }}
+    {%- endif %}
+    {% if info.attacked_agent is not none -%}
+    襲撃結果: {{ info.attacked_agent }}
+    {%- endif %}
+    {% if info.vote_list is not none -%}
+    投票結果: {{ info.vote_list }}
+    {%- endif %}
+    {% if info.attack_vote_list is not none -%}
+    襲撃投票結果: {{ info.attack_vote_list }}
+    {%- endif %}
+  divine: |-
+    占いリクエスト
+    対象:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  guard: |-
+    護衛リクエスト
+    対象:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  vote: |-
+    投票リクエスト
+    対象:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  attack: |-
+    襲撃リクエスト
+    対象:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+
+log:
+  console_output: true
+  file_output: true
+  output_dir: ./log
+  level: debug
+
+  request:
+    name: false
+    initialize: false
+    daily_initialize: false
+    whisper: true
+    talk: true
+    daily_finish: false
+    divine: true
+    guard: true
+    vote: true
+    attack: true
+    finish: false

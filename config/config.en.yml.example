@@ -1,0 +1,156 @@
+web_socket:
+  url: ws://127.0.0.1:8080/ws
+  token:
+  auto_reconnect: false
+
+agent:
+  num: 5
+  team: kanolab
+  kill_on_timeout: true
+
+llm:
+  type: google
+  sleep_time: 3
+
+openai:
+  model: gpt-4o-mini
+  temperature: 0.7
+
+google:
+  model: gemini-2.0-flash-lite
+  temperature: 0.7
+
+ollama:
+  model: llama3.1
+  temperature: 0.7
+  base_url: http://localhost:11434
+
+prompt:
+  initialize: |-
+    You are a werewolf game agent.
+    Your name is {{ info.agent }}.
+    Your role is {{ role.value }}.
+
+    The game will now proceed. When you receive a request, please return an appropriate response in English.
+
+    For talk requests and whisper requests, output only the content that should be spoken in the game.
+    If there is a history, refer to it. If there isn't, output appropriate content.
+    When you want to end your talk because you think you can't get any more information, output "Over".
+
+    For other requests, output only the name of the agent that is the target of the action.
+    A list of surviving agents that can be targeted is provided.
+
+    {% if info.profile is not none -%}
+    Your profile: {{ info.profile }}
+    {%- endif %}
+
+    Your response will be sent directly to the game, so do not include unnecessary information.
+  daily_initialize: |-
+    Day start request
+    Day {{ info.day }}
+    {% if info.medium_result is not none -%}
+    Medium result: {{ info.medium_result }}
+    {%- endif %}
+    {% if info.divine_result is not none -%}
+    Divine result: {{ info.divine_result }}
+    {%- endif %}
+    {% if info.executed_agent is not none -%}
+    Execution result: {{ info.executed_agent }}
+    {%- endif %}
+    {% if info.attacked_agent is not none -%}
+    Attack result: {{ info.attacked_agent }}
+    {%- endif %}
+    {% if info.vote_list is not none -%}
+    Vote result: {{ info.vote_list }}
+    {%- endif %}
+    {% if info.attack_vote_list is not none -%}
+    Attack vote result: {{ info.attack_vote_list }}
+    {%- endif %}
+  whisper: |-
+    Whisper request
+    History:
+    {% for w in whisper_history[sent_whisper_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+  talk: |-
+    Talk request
+    History:
+    {% for w in talk_history[sent_talk_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+  daily_finish: |-
+    Day end request
+    History:
+    {% for w in talk_history[sent_talk_count:] -%}
+    {{ w.agent }}: {{ w.text }}
+    {% endfor %}
+    Day {{ info.day }}
+    {% if info.medium_result is not none -%}
+    Medium result: {{ info.medium_result }}
+    {%- endif %}
+    {% if info.divine_result is not none -%}
+    Divine result: {{ info.divine_result }}
+    {%- endif %}
+    {% if info.executed_agent is not none -%}
+    Execution result: {{ info.executed_agent }}
+    {%- endif %}
+    {% if info.attacked_agent is not none -%}
+    Attack result: {{ info.attacked_agent }}
+    {%- endif %}
+    {% if info.vote_list is not none -%}
+    Vote result: {{ info.vote_list }}
+    {%- endif %}
+    {% if info.attack_vote_list is not none -%}
+    Attack vote result: {{ info.attack_vote_list }}
+    {%- endif %}
+  divine: |-
+    Divine request
+    Targets:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  guard: |-
+    Guard request
+    Targets:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  vote: |-
+    Vote request
+    Targets:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+  attack: |-
+    Attack request
+    Targets:
+    {% for k, v in info.status_map.items() -%}
+    {%- if v == 'ALIVE' -%}
+    {{ k }}
+    {% endif -%}
+    {%- endfor %}
+
+log:
+  console_output: true
+  file_output: true
+  output_dir: ./log
+  level: debug
+
+  request:
+    name: false
+    initialize: false
+    daily_initialize: false
+    whisper: true
+    talk: true
+    daily_finish: false
+    divine: true
+    guard: true
+    vote: true
+    attack: true
+    finish: false
