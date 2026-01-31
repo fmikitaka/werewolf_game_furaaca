@@ -73,6 +73,7 @@ def handle_game_session(
     client: Client,
     config: dict[str, Any],
     name: str,
+    idx: int,
 ) -> None:
     """Handle game session.
 
@@ -82,6 +83,7 @@ def handle_game_session(
         client (Client): Client instance / クライアントインスタンス
         config (dict[str, Any]): Configuration dictionary / 設定辞書
         name (str): Agent name / エージェント名
+        idx (int): Agent index / エージェントインデックス
     """
     agent: Agent | None = None
     while True:
@@ -90,7 +92,7 @@ def handle_game_session(
             client.send(name)
             continue
         if packet.request == Request.INITIALIZE:
-            agent = init_agent_from_packet(config, name, packet)
+            agent = init_agent_from_packet(config, name, packet, idx)
         if not agent:
             raise ValueError(agent, "エージェントが初期化されていません")
         agent.set_packet(packet)
@@ -117,7 +119,7 @@ def connect(config: dict[str, Any], idx: int = 1) -> None:
             client = create_client(config)
             connect_to_server(client, name)
             try:
-                handle_game_session(client, config, name)
+                handle_game_session(client, config, name, idx)
             finally:
                 client.close()
                 logger.info("エージェント %s とゲームサーバの接続を切断しました", name)

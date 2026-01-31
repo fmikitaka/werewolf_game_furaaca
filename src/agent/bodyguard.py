@@ -22,6 +22,7 @@ class Bodyguard(Agent):
         self,
         config: dict[str, Any],
         name: str,
+        idx: int,
         game_id: str,
         role: Role,  # noqa: ARG002
     ) -> None:
@@ -35,7 +36,7 @@ class Bodyguard(Agent):
             game_id (str): Game ID / ゲームID
             role (Role): Role (ignored, always set to BODYGUARD) / 役職(無視され、常にBODYGUARDに設定)
         """
-        super().__init__(config, name, game_id, Role.BODYGUARD)
+        super().__init__(config, name, idx, game_id, Role.BODYGUARD)
 
     def talk(self) -> str:
         """Return response to talk request.

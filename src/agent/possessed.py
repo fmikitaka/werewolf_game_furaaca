@@ -22,6 +22,7 @@ class Possessed(Agent):
         self,
         config: dict[str, Any],
         name: str,
+        idx: int,
         game_id: str,
         role: Role,  # noqa: ARG002
     ) -> None:
@@ -35,7 +36,7 @@ class Possessed(Agent):
             game_id (str): Game ID / ゲームID
             role (Role): Role (ignored, always set to POSSESSED) / 役職(無視され、常にPOSSESSEDに設定)
         """
-        super().__init__(config, name, game_id, Role.POSSESSED)
+        super().__init__(config, name, idx, game_id, Role.POSSESSED)
 
     def talk(self) -> str:
         """Return response to talk request.

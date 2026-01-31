@@ -30,6 +30,7 @@ def init_agent_from_packet(
     config: dict[str, Any],
     name: str,
     packet: Packet,
+    idx: int,
 ) -> Agent:
     """Initialize an agent class corresponding to the role.
 
@@ -39,6 +40,7 @@ def init_agent_from_packet(
         config (dict[str, Any]): Configuration dictionary for the agent / エージェントの設定辞書
         name (str): Name of the agent / エージェントの名前
         packet (Packet): Packet containing game information / ゲーム情報を含むパケット
+        idx (int): Agent index / エージェントインデックス
 
     Returns:
         Agent: Initialized agent instance for the specified role /
@@ -56,6 +58,7 @@ def init_agent_from_packet(
     return ROLE_TO_AGENT_CLS[role](
         config=config,
         name=name,
+        idx=idx,
         game_id=packet.info.game_id,
         role=role,
     )

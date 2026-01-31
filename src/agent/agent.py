@@ -47,6 +47,7 @@ class Agent:
         self,
         config: dict[str, Any],
         name: str,
+        idx: int,
         game_id: str,
         role: Role,
     ) -> None:
@@ -57,11 +58,13 @@ class Agent:
         Args:
             config (dict[str, Any]): Configuration dictionary / 設定辞書
             name (str): Agent name / エージェント名
+            idx (int): Agent index / エージェントインデックス
             game_id (str): Game ID / ゲームID
             role (Role): Role / 役職
         """
         self.config = config
         self.agent_name = name
+        self.agent_idx = idx
         self.agent_logger = AgentLogger(config, name, game_id)
         self.request: Request | None = None
         self.info: Info | None = None
@@ -147,9 +150,12 @@ class Agent:
         """Invoke contradiction check prompt and return parsed result."""
         if self.llm_model is None:
             return None
+#        template_str = (
+#            self.config.get("module_prompt", {})
+#            or {}
+#        ).get("contradiction_check")
         template_str = (
             self.config.get("module_prompt", {})
-            or {}
         ).get("contradiction_check")
         if not template_str:
             return None
@@ -392,10 +398,16 @@ class Agent:
                     temperature=float(self.config["openai"]["temperature"]),
                 )
             case "google":
-                self._require_env_var("GOOGLE_API_KEY")
+                api_key_temp = ""
+                try:
+                    api_key_temp = self._require_env_var("SUB_GOOGLE_API_KEY_" + str(self.agent_idx))
+                except RuntimeError:
+                    self.agent_logger.logger.info("SUB_GOOGLE_API_KEY_" + str(self.agent_idx) + " is not set, using default GOOGLE_API_KEY")
+                    api_key_temp = self._require_env_var("GOOGLE_API_KEY")
                 self.llm_model = ChatGoogleGenerativeAI(
                     model=str(self.config["google"]["model"]),
                     temperature=float(self.config["google"]["temperature"]),
+                    api_key=api_key_temp,
                 )
             case "ollama":
                 self.llm_model = ChatOllama(

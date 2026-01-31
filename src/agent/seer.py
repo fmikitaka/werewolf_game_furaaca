@@ -22,6 +22,7 @@ class Seer(Agent):
         self,
         config: dict[str, Any],
         name: str,
+        idx: int,
         game_id: str,
         role: Role,  # noqa: ARG002
     ) -> None:
@@ -35,7 +36,7 @@ class Seer(Agent):
             game_id (str): Game ID / ゲームID
             role (Role): Role (ignored, always set to SEER) / 役職(無視され、常にSEERに設定)
         """
-        super().__init__(config, name, game_id, Role.SEER)
+        super().__init__(config, name, idx, game_id, Role.SEER)
 
     def talk(self) -> str:
         """Return response to talk request.

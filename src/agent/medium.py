@@ -22,6 +22,7 @@ class Medium(Agent):
         self,
         config: dict[str, Any],
         name: str,
+        idx: int,
         game_id: str,
         role: Role,  # noqa: ARG002
     ) -> None:
@@ -35,7 +36,7 @@ class Medium(Agent):
             game_id (str): Game ID / ゲームID
             role (Role): Role (ignored, always set to MEDIUM) / 役職(無視され、常にMEDIUMに設定)
         """
-        super().__init__(config, name, game_id, Role.MEDIUM)
+        super().__init__(config, name, idx, game_id, Role.MEDIUM)
 
     def talk(self) -> str:
         """Return response to talk request.
