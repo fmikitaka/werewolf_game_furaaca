@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import json
 import os
 import random
@@ -142,28 +144,70 @@ class Agent:
         data.setdefault("revised_response", "")
         data["raw_output"] = raw_output
         return data
+    
+    @staticmethod
+    def _extract_cot_response(raw_output: str) -> tuple[str, str]:
+        """Extract thought and action from CoT JSON output."""
+        text = raw_output.strip()
+        # マークダウンのコードブロック ```json ... ``` などを除去・抽出するための正規表現
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        payload = match.group(0) if match else text
+        
+        try:
+            data: dict[str, Any] = json.loads(payload)
+            # プロンプトで指定するキー "thought" と "action" を取得
+            thought = data.get("thought", "")
+            action = data.get("action", "")
+            
+            # JSONだが中身が空の場合などのフォールバック
+            if not action and not thought:
+                return "", text
+            
+            # 数値などが返ってきた場合に備えて文字列化
+            return str(thought), str(action)
+            
+        except json.JSONDecodeError:
+            # JSONパースに失敗した場合は、思考なしの通常テキストとして扱う
+            return "", text
+
+    from typing import Any, cast, TYPE_CHECKING
+# ... 他のインポート ...
 
     def _run_contradiction_check(self, request: Request | None, candidate_response: str) -> dict[str, Any] | None:
         """Invoke contradiction check prompt and return parsed result."""
         if self.llm_model is None:
             return None
-        template_str = (
-            self.config.get("module_prompt", {})
-            or {}
-        ).get("contradiction_check")
+
+        # 修正: {} が含まれる式全体を cast で囲み、中身不明な変数が作られるのを防ぐ
+        module_prompt = cast(dict[str, Any], self.config.get("module_prompt", {}) or {})
+        
+        # template_str の取得
+        template_str = cast(str | None, module_prompt.get("contradiction_check"))
+
         if not template_str:
             return None
-        check_config = self.config.get("contradiction_check", {})
-        history_limit = int(check_config.get("history_limit", 10))
+
+        # 修正: ここも同様に直接 cast します
+        check_config = cast(dict[str, Any], self.config.get("contradiction_check", {}) or {})
+        
+        # history_limit の取得
+        history_limit = int(cast(int | str, check_config.get("history_limit", 10)))
+
         allow_role_bluff = False
         if self.role:
             role_value = str(getattr(self.role, "value", self.role))
+            
+            # 修正: リスト取得部分も直接 cast
+            target_roles_list = cast(list[Any], check_config.get("allow_role_bluff_roles", []))
+            
             allowed_roles = {
                 str(role_name).upper()
-                for role_name in check_config.get("allow_role_bluff_roles", [])
+                for role_name in target_roles_list
             }
             allow_role_bluff = role_value.upper() in allowed_roles
+
         template = Template(template_str)
+        
         rendered_prompt = template.render(
             agent_name=self.agent_name,
             role=self.role,
@@ -174,11 +218,13 @@ class Agent:
             candidate_response=candidate_response,
             allow_role_bluff=allow_role_bluff,
         ).strip()
+
         try:
             raw_output = (self.llm_model | StrOutputParser()).invoke([HumanMessage(content=rendered_prompt)])
         except Exception:
             self.agent_logger.logger.exception("Failed to run contradiction check")
             return None
+            
         return self._parse_contradiction_output(raw_output)
 
     def _postprocess_response(self, request: Request | None, prompt: str, response: str) -> str:
@@ -348,21 +394,39 @@ class Agent:
         }
         template: Template = Template(prompt)
         prompt = template.render(**key).strip()
+        
         if self.llm_model is None:
             self.agent_logger.logger.error("LLM is not initialized")
             return None
+            
         try:
             self.llm_message_history.append(HumanMessage(content=prompt))
-            response = (self.llm_model | StrOutputParser()).invoke(self.llm_message_history)
-            response = self._postprocess_response(request, prompt, response)
-            self.llm_message_history.append(AIMessage(content=response))
-            self.agent_logger.logger.info(["LLM", prompt, response])
-            self.agent_logger.conversation(self.request, prompt, response)
+            
+            # 1. 生のレスポンスを取得 (JSON文字列想定)
+            raw_response = (self.llm_model | StrOutputParser()).invoke(self.llm_message_history)
+            
+            # 2. 【変更】CoTの抽出処理
+            thought, action_candidate = self._extract_cot_response(raw_response)
+            
+            # 3. 思考があればログに出力 (デバッグ用)
+            if thought:
+                self.agent_logger.logger.info(f"[CoT Thought] {thought}")
+            
+            # 4. 行動部分だけを後処理（矛盾チェック・正規化）に回す
+            final_response = self._postprocess_response(request, prompt, action_candidate)
+            
+            # 5. 会話履歴には「最終的な行動」を追加 (思考は履歴に残さない設定としています)
+            self.llm_message_history.append(AIMessage(content=final_response))
+            
+            self.agent_logger.logger.info(["LLM", prompt, final_response])
+            # ログファイルには思考も残す
+            self.agent_logger.conversation(self.request, prompt, f"Thought: {thought}\nAction: {final_response}")
+            
         except Exception:
             self.agent_logger.logger.exception("Failed to send message to LLM")
             return None
         else:
-            return response
+            return final_response
 
     @timeout
     def name(self) -> str:
