@@ -5,7 +5,7 @@ web_socket:
 
 agent:
   num: 5
-  team: kanolab
+  team: furaaca
   kill_on_timeout: true
 
 llm:
@@ -17,7 +17,7 @@ openai:
   temperature: 0.7
 
 google:
-  model: gemini-2.5-flash-lite
+  model: gemma-3-4b-it
   temperature: 1.0
 
 ollama:
@@ -56,7 +56,7 @@ prompt:
     あなたのプロフィール: {{ info.profile }}
     {%- endif %}
     役職の説明は以下の通りです。
-      🟦 市民（2人） — 市民陣営
+      VILLAGER/市民（2人） — 市民陣営
 
       なんの能力も持たない普通の人。
       しかし、能力を持たないからこそ、人狼に噛まれる心配が比較的少なく、
@@ -65,7 +65,7 @@ prompt:
       自ら市民だと名乗ることは潜伏枠を狭め、役職者の妨げになる場合がある。
       基本的には占い師の盾となりつつ、会話での情報整理と判断が重要となる。
 
-      🔮 占い師（1人） — 市民陣営の要
+      SEER/占い師（1人） — 市民陣営の要
 
       毎夜一人を占い、その人物が「人狼」か「人狼でない」かを知ることができる。
       この村では人数が少ないため、一つの占い結果が村の命運を左右する。
@@ -73,7 +73,7 @@ prompt:
       いつ名乗り出るか・どう結果を落とすかの判断が非常に重要となる。
       市民側に確実な情報を残すことで勝利が近づく。
 
-      🟥 狂人（1人） — 人狼陣営の協力者
+      POSSESSED/狂人（1人） — 人狼陣営の協力者
 
       人狼に味方する危険な人間。
       しかし、自分からは誰が人狼なのか分からない。
@@ -82,7 +82,7 @@ prompt:
       市民陣営を誤った方向へ導く行動をとる。
       人数が少ない村では、ひとつのミスリードが勝敗を大きく揺らす。
 
-      🐺 人狼（1人） — 人狼陣営の核
+      WEREWOLF/人狼（1人） — 人狼陣営の核
 
       夜の行動で指定した人物を襲撃できる唯一の存在。
       人数が少ないため、昼の会話では特に慎重に立ち回る必要がある。
@@ -96,10 +96,10 @@ prompt:
     昼開始リクエスト
     {{ info.day }}日目
     {% if info.medium_result is not none -%}
-    霊能結果: {{ info.medium_result }}
+    {{ info.medium_result.day }}日目の霊能結果: {{ info.medium_result.target }}は{{ info.medium_result.result }}
     {%- endif %}
     {% if info.divine_result is not none -%}
-    占い結果: {{ info.divine_result }}
+    {{ info.divine_result.day }}日目の占い結果: {{ info.divine_result.target }}は{{ info.divine_result.result }}
     {%- endif %}
     {% if info.executed_agent is not none -%}
     追放結果: {{ info.executed_agent }}
@@ -123,16 +123,23 @@ prompt:
     トークリクエスト
     {% if role.value == "SEER" -%}
     {% if info.divine_result is not none -%}
-    占い結果: {{ info.divine_result }}
+    {{ info.divine_result.day }}日目の占い結果: {{ info.divine_result.target }}は{{ info.divine_result.result }}
     結果を公表するか否かを慎重に検討して発言してください。
     {%- endif %}
     {%- endif %}
-    {% if role.value == "WEREWOLF" -%}
+    {% if role.value == "WEREWOLF" or role.value == "POSSESSED" -%}
     HUMAN陣営として振る舞い、他のエージェントを騙すように発言してください。
     {%- endif %}
     残り発言可能文字数:
+    {% if info.remain_length -%}
     {{ info.remain_length }}
-    履歴:
+    {%- else -%}
+    50文字
+    {%- endif %}
+    以下に示す履歴は、あなたが前回送信した発言以降の他のエージェントの発言です。
+    過去の対話内容を参考にしつつ、自分の立場や役職に基づいて適切な発言を生成してください。
+    直前の会話の繰り返しなど、無意味な発言は避けてください。
+    履歴（前回からの差分）:
     {% for w in talk_history[sent_talk_count:] -%}
     {{ w.agent }}: {{ w.text }}
     {% endfor %}
@@ -144,10 +151,10 @@ prompt:
     {% endfor %}
     {{ info.day }}日目
     {% if info.medium_result is not none -%}
-    霊能結果: {{ info.medium_result }}
+    {{ info.medium_result.day }}日目の霊能結果: {{ info.medium_result.target }}は{{ info.medium_result.result }}
     {%- endif %}
     {% if info.divine_result is not none -%}
-    占い結果: {{ info.divine_result }}
+    {{ info.divine_result.day }}日目の占い結果: {{ info.divine_result.target }}は{{ info.divine_result.result }}
     {%- endif %}
     {% if info.executed_agent is not none -%}
     追放結果: {{ info.executed_agent }}
@@ -163,7 +170,7 @@ prompt:
     {%- endif %}
   divine: |-
     占いリクエスト
-    以下の生存者から1人を選び、占いたいエージェント名のみを出力してください。
+    以下の生存者から、人狼であるかどうかを占いたい人物を1人を選び、エージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -181,7 +188,10 @@ prompt:
     {%- endfor %}
   vote: |-
     投票リクエスト
-    以下の生存者から1人を選び、投票するエージェント名のみを出力してください。
+    以下の生存者から、人狼の可能性が高く排除されるべきであると思われる人物を1人を選び、エージェント名のみを出力してください。
+    {% if role.value == "WEREWOLF" or role.value == "POSSESSED" -%}
+    なお、あなたは人狼陣営であるので、人狼は可能な限り選ばないようにしつつ、かつ自分の正体がばれないように注意して投票先を選んでください。
+    {%- endif %}
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
@@ -190,7 +200,7 @@ prompt:
     {%- endfor %}
   attack: |-
     襲撃リクエスト
-    以下の生存者から1人を選び、襲撃したいエージェント名のみを出力してください。
+    以下の生存者から、今後生存していると厄介と思われる人物を1人を選び、そのエージェント名のみを出力してください。
     対象:
     {% for k, v in info.status_map.items() -%}
     {%- if v == 'ALIVE' -%}
